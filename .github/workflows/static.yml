@@ -33,8 +33,23 @@ jobs:
         uses: actions/checkout@v4
       - name: Setup Pages
         uses: actions/configure-pages@v5
+      - name: Setup Environment
+        run: |
+          git config --global --add safe.directory $PWD
+          echo "$HOME/.elan/bin" >> $GITHUB_PATH
+      - name: Install elan
+        run: |
+          curl -O -L https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh
+          chmod u+x elan-init.sh
+          LEAN_VERSION=`cat lean-toolchain`
+          ./elan-init.sh -y --default-toolchain $LEAN_VERSION
+          elan toolchain list
+          lake --version
       - name: Build docs
-        uses: ./.github/actions/build_doc
+        # uses: ./.github/actions/build_doc
+        run: |
+          lake -R -Kenv=dev update
+          lake -R -Kenv=dev build QuickStart:docs
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
