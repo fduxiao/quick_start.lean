@@ -1,3 +1,8 @@
+/-
+for some technical reason, I have to write several tactics for help
+-/
+import QuickStart.MyTactics
+
 /-!
 In this file, we have basically two things: formal lean codes and comments. Lean codes are just
 what they are called and comments are lines of natural language encompassed in /- -/ (we may have
@@ -184,10 +189,27 @@ namespace scratch
 
 def and: Bool -> Bool -> Bool
   | .true, .true => .true
-  | .false, .true => .false
-  | _, _ => .false -- wildcard
+  | .false, _ => .false -- wildcard
+  | _, _ => .false
+
+
+/-! this is an exercise -/
+def or: Bool -> Bool -> Bool := sorry
+
+def not: Bool -> Bool
+  | .true => .false
+  | .false => .true
 
 end scratch
+
+/-!
+For the builtin type `Bool`, you can also use an `if ... then ... else ...` notation
+instead of matching a `true`/`false`
+-/
+
+def my_not (x: Bool): Bool := if x then false else true
+
+#eval my_not false
 
 /-!
 You can also define the `next_weekday` in the namespace `Week`. This time, let's call
@@ -198,10 +220,84 @@ The good part of that is you can use `w.next` for some `w: Week`.
 def Week.next: Week -> Week := next_weekday -- certainly you can use your own definitions
 #eval Week.Wednesday.next
 
+
 /-!
-Now you can try the next exercise.
+## Simple proofs with the tactic system
+
+Now we are able to write down some basic proofs. We should think of proofs as terms of
+some types, but to construct a large proof, the `tactic` system is more helpful. The two ways
+to construct proofs are equivalent. You can think of tactics as syntactic sugar. I will
+explain how tactics work later.
+
+
+### Equality by reflexivity
+
+To begin with, I am going to find a proof of `not false = true`, i.e., I am going to construct
+a term `not_false_is_true: not false = true`. Here `term1 = term2` is a proposition, i.e., a
+type. Then Curry-Howard correspondence says that it is provable if and only if we can find a
+term of that type. I haven't defined this type, so you don't know its constructor or eliminator.
+You can only rely on the tactic system to prove it now.
 -/
-/--
-Your own doc string
+
+
+def not_false_is_true : not false = true := by -- To use tactics, we begin with keyword `by`
+  compute only [not] -- This is not a standard lean tactic. I just want to show some intermediate steps
+  rfl -- The only way to prove equality is reflexivity.
+  -- There's no further gaols. We have proved that.
+
+/-!
+If you don't want to always come up with a name, then use the `example` keyword.
 -/
-inductive TrafficLight: Type
+
+example: not false = true := by
+  compute only [not]
+  rfl
+
+
+/-!
+In fact, lean provides the `simp` tactic, so you can finish this by only one line.
+-/
+example: not true = false := by
+  simp
+
+
+/-! or some more complicated -/
+example: forall b: Bool, and false b = false := by
+  intros b -- bring the variable `b: Bool` into premises
+  compute only [and]
+  rfl
+
+/-!
+### Proof by cases
+
+However, this fails for `and b false`. In the definition of `and`, we define `and false _` to be
+`false`. This means `and false: Bool -> Bool` is a function `λ _ => false`. So of course
+`and false _` can be reduced to `false`. But when we apply `and` to a variable `b: Bool`. There's no
+way to do the β-reduction.
+-/
+
+theorem and_false_first_try: forall b: Bool, and b false = false := by
+  intros b
+  compute only [and]
+  sorry
+
+
+/-!
+To solve this, we prove the theorem when `b:=true` and `b:=false` since `Bool` is only defined
+with these two values.
+-/
+theorem and_false': forall b: Bool, and b false = false := by
+  intros b
+  cases b with
+  | false =>
+    compute only [and]
+    rfl
+  | true =>
+    compute only [and]
+    rfl
+
+/-!
+Still the `simp` tactic is so powerful that we can solve this simply.
+-/
+theorem or_true': forall b: Bool, or b true = true := by
+  intros b; simp -- you can write multi tactics in one line with them separated by `;`
