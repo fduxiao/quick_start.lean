@@ -167,6 +167,22 @@ To test the function `next_weekday`, using `#eval`
 
 
 /-!
+### Currying
+
+The above function is defined only for one variable. In set theory, a function for two variables is
+defined as $f: A × B → C$. This can also be interpreted by the exponential rule: for each $a∈A$,
+$f(a)$ is a function $B→C$, i.e., we many instead define $f: A → (B → C)$. This behavior is called
+`currying`, which is adopted by type theory as the definition of multi-variable functions.
+
+If we make the conventions that $→$ is right associative, we then simply write it as $f: A→B→C$.
+-/
+
+def ABA: Week -> Bool -> Week := λ a => λ b => a
+
+-- or a simplier
+def ABA': Week -> Bool -> Week := λ a b => a
+
+/-!
 ## Syntactic Sugar
 The above might be thought as the `standard` way to define a function by λ-calculus.
 However, it may not be the most convenient way to define a function. For example, the semantics
@@ -604,7 +620,8 @@ def monoid_assoc3: forall l m n: FreeMonoidByThree, l.concat (m.concat n) = (l.c
 
 /-!
 There are ceratinly some common parts in these free monoid. We can introduce a type variable in order
-to save some life.
+to save some life. You can understand the following as defining a free monoid as above for each type, and they
+turn out to be a function `FreeMonoid: Type -> Type`.
 -/
 
 inductive FreeMonoid (A: Type): Type :=
