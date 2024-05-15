@@ -270,6 +270,13 @@ a vector bundle, whose elements are those pairs `(p, vₚ)` such that $v_p \in T
 inductive MyDependentPair (A: Type) (P: A -> Type): Type :=
   | pair (a: A) (p: P a): MyDependentPair A P
 
+
+def MyDependentPair.pr1: MyDependentPair A P -> A
+  | pair a _ => a
+
+def MyDependentPair.pr2 (p: MyDependentPair A P): P (MyDependentPair.pr1 p) := match p with
+  | pair _ p => p
+
 /-!
 For such a (dependent) pair, the most useful things are the projections to each components. In general,
 you have to define them each time after define a new type. Lean provides a syntactic sugar called `structure`
@@ -303,13 +310,13 @@ def point34 := Point.mkPoint 3 4
 #eval { point34 with x:=5 }
 
 /-!
-The structure can also be dependent. For example a monoid is a dependent triple with
+The structure can also be dependent. For example a monoid is a dependent tuple with
 1. a type `Carrier`
 2. a unit of type `Carrier`
 3. the binary operator `Carrier -> Carrier -> Carrier`
 4. the witness of the axioms of a monoid
 
-I first define the `data` of a monoid, and extend it with the witness.
+I first define the `data` of a monoid, and then extend it with the witness.
 -/
 
 structure MonoidData where
@@ -318,6 +325,7 @@ structure MonoidData where
   op : Carrier -> Carrier -> Carrier
 
 #check MonoidData.mk
+#check MonoidData.op
 
 structure Monoid extends MonoidData where
   left_unit: forall x: Carrier, op unit x = x
@@ -325,17 +333,127 @@ structure Monoid extends MonoidData where
   op_assoc: forall x y z: Carrier, op x (op y z) = op (op x y) z
 
 /-!
-Lean provides type `Exists` for existential quantifiers.
+Lean provides type `And` for conjuction and type `Exists` for existential quantifiers. `And` is defined
+as a structure but `Exists` is still defined as an inductive pair.
+
 ```lean
+#check And
+#check And.intro
+#check @And.left
+#check @And.right
+#check @And.rec
+
 #check Exists
 #check Exists.intro
+#check Exists.choose
+#check Exists.choose_spec
 #check @Exists.rec
 ```
 -/
 
+namespace scratch
+
+structure And (A B: Prop): Prop where
+  intro ::
+  left: A
+  right: B
+
+inductive Exists (A: Type) (P: A -> Prop): Prop where
+  | intro: (a: A) -> P a -> Exists A P
+
+end scratch
+
+
+#check And
+#check And.intro
+#check @And.left
+#check @And.right
+#check @And.rec
+
 #check Exists
 #check Exists.intro
+#check Exists.choose
+#check Exists.choose_spec
 #check @Exists.rec
+
+
+/-!
+### True and False and ex falso quodlibet
+
+The type universe itself can be thought as a category with a terminal object `True: Type` and an initial
+object `False: Type`. They should be types (unlike `true: Bool` or `false: Bool`). In lean, `True` is just
+a type with only one trivial constructor and `False` is an inductive without any constructor. Also `Not A`
+is defined to be `A -> False`.
+-/
+
+namespace scratch
+
+inductive True: Prop :=
+  | intro: True
+
+#check @True.rec
+
+inductive False: Prop
+
+#check @False.rec
+
+def Not (A: Prop) := A -> False
+
+end scratch
+
+/-!
+You are able to define any function out of `False`. This time, instead of `match`, we use `nomatch`
+showing that it cannot be constructed. Again, this is the application of eliminator.
+-/
+
+#check @False.elim
+def exfalso (t: False): A := nomatch t
+def exfalso': False -> A := @False.elim A
+
+
+theorem exfalso'': forall (A B: Prop), A ∧ ¬ A -> B := by
+  intros A B H
+  exfalso
+  have Ha := H.left
+  have Hna := H.right
+  apply Hna
+  apply Ha
+
+/-!
+Injections and discrimination
+
+Basically, the constructors are injective and are disjoint with each other
+-/
+
+theorem succ_inj: forall n m: Nat, n.succ = m.succ -> n = m := by
+  intros n m H
+  have H': n = n.succ.pred := by rfl
+  rw [H']
+  rw [H]
+  rfl
+
+/-!
+This is admitted by lean automatically.
+-/
+theorem succ_inj': forall n m: Nat, n.succ.succ = m.succ.succ -> n + k = m + k := by
+  intros n m H
+  injection H with H'
+  injection H' with H''
+  rw [H'']
+
+/-!
+And `zero` can never be a `succ`
+-/
+
+theorem discriminate_ex1: forall (n: Nat), 0 = n.succ -> true = false := by
+  intros n contra
+  -- we have the contradiction in premise contra
+  contradiction
+
+theorem discriminate_ex2: forall (m n: Nat), true = false -> m = n := by
+  intros m n contra
+  -- we have the contradiction in premise contra
+  contradiction
 
 /-!
 ## Induction Principle for natural numbers.

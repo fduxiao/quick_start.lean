@@ -411,6 +411,9 @@ def id1': forall (A: Type), id_type A := λ A => λ (x: A) => x
 def id1'': forall A: Type, A -> A := λ (A: Type) => λ (x: A) => x
 def id1''' (A: Type) (x: A) := x
 
+/-! or even write the type with only arrows -/
+def id1'''': (A: Type) -> (x: A) -> A := id1''
+
 
 /-!
 You can check the definitions.
@@ -496,6 +499,18 @@ Natural numbers are defined with `Z: N` and `S: N -> N`.
 inductive N :=
   | Z: N
   | S: N -> N
+
+/-!
+Or maybe you like the naming convention of lean: `Nat`.
+-/
+
+namespace scratch
+
+inductive Nat :=
+  | zero: Nat
+  | succ: Nat -> Nat
+
+end scratch
 
 /-!
 The matching rule is also a bit complicated as shown in the following definition of addition.
