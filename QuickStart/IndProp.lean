@@ -37,7 +37,7 @@ theorem double_evenb: forall n, evenb (double n) = true := by
     simp [evenb]
     apply IHm
 
-theorem double_conv: forall n, exists k, n = if evenb n then double k else (double k).succ := by
+theorem even_double_conv: forall n, exists k, n = if evenb n then double k else (double k).succ := by
   intros n
   induction n
   case zero =>
@@ -62,7 +62,7 @@ theorem double_conv: forall n, exists k, n = if evenb n then double k else (doub
         rfl
 
 /-!
-## evenE is decidable
+## `even_double` is decidable
 -/
 
 theorem even_double_evenb: forall n, even_double n -> evenb n = true := by
@@ -73,7 +73,14 @@ theorem even_double_evenb: forall n, even_double n -> evenb n = true := by
     rw [Hk]
     apply double_evenb
 
-theorem evenb_even_double: forall n: Nat, evenb n = true -> even_double n := sorry
+theorem evenb_even_double: forall n: Nat, evenb n = true -> even_double n := by
+  intros n H
+  have conv_n := even_double_conv n
+  cases conv_n with
+  | intro k Hk =>
+    rw [H] at Hk
+    simp at Hk
+    exists k
 
 
 /-!
@@ -104,14 +111,25 @@ theorem even_evenb: forall n, even n -> evenb n = true := by
     exact IHe
 
 
+theorem double_even: forall k, even (double k) := by
+  intros k
+  induction k
+  case zero => apply even_z
+  case succ l IHl =>
+    have E: double (l + 1) = double l + 2 := by simp [double]; rfl
+    rw [E]
+    apply even_ss
+    apply IHl
+
+
 theorem evenb_even: forall n, evenb n = true -> even n := by
-  intros n
-  induction n
-  case zero =>
-    intro H
-    apply even_z
-  case succ m IHm =>
-    admit
+  intros n H
+  have E := evenb_even_double n H
+  cases E with
+  | intro k Hk =>
+    rw [Hk]
+    apply double_even
+
 
 /-!
 ### Another example as exercise
