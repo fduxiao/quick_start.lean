@@ -194,17 +194,36 @@ theorem imp_distrib: forall {A B C: Prop}, (A -> B -> C) -> (A -> B) -> (A -> C)
   intros f g a
   -- Then, I want to apply `f`.
   apply f
-  -- This means I have to give
-  case a => -- case A
-    exact a -- apply a
-  . -- case B, another syntactic for enumerating cases
-    apply g
-    exact a
+  -- This means I have to give the proofs of `A` and `B`
+  apply a -- proof of `A`
+  apply (g a) -- proof of `B`
 
 /-!
-In other words, tactics are just a small part of the construction of a long λ-term.
+In other words, tactics are just a small part of the construction of a long λ-term. And we know that
+dependent functions are just universal quantifiers. Most tactics are just application of certain
+dependent functions.
 
+We know `intros` is to bring a variable into premises. We can also revert that.
+To show you the example, I temporarily enter a section with some extra variables (axioms) for convenience.
+This is a bit like an anonymous namespace.
+-/
 
+section
+
+variable (A B: Type)
+variable (P: A -> B -> Prop)
+axiom some_fact: forall (x: A) (y: B), P x y
+
+-- theorem another_fact: forall (y: B) (x: A), P x y := some_fact
+theorem another_fact: forall (y: B) (x: A), P x y := by
+  intros y x
+  revert y
+  revert x
+  apply some_fact
+
+end
+
+/-!
 ### Equality and rewrite.
 
 Now, I reveal the mistery of `rfl`. For any type `A: Type` and `x, y: A`, you can always form the type
@@ -232,11 +251,44 @@ principle is a variant of the above, called the `based path induction` in HoTT. 
 
 #check @Eq.rec
 
-theorem function_well_defined: forall (f: A -> B) (x y: A), x=y -> f x = f y := by
+theorem function_well_defined: forall (f: A -> B) (x y: A), x = y -> f x = f y := by
   intros f x y
   -- apply @Eq.rec -- unable to infer the type A
   apply (@Eq.rec A) -- equivalent to `rw`
   apply Eq.refl -- equivalent to `rfl`
+
+/-！
+#### Generalization with equalities
+In logic, if we are able to prove a formula about a constant which does not occur in the axioms, then
+we are able to *generalize* it with a universal quantifier. This is to say, if you want to prove a fact
+about a constant, you can instead treat it as a variable.
+-/
+theorem five_plus_zero: 5 + 0 = 5 := by
+  generalize 5 = x
+  apply Nat.add_zero
+
+/-!
+So, what does lean do here? Suppose you have a predicate `P: A -> Prop`, and you want to prove `P c`
+for some constant `c: A`. To generalize it, lean changes your goal form `P c` to `forall x, x=c -> P x`.
+Then your aim is to prove the new goal.
+-/
+theorem five_plus_zero': 5 + 0 = 5 := by
+  -- we can make some local assertions by tactic `have`
+  -- and the original is equivalent to prove this assertion
+  have an_assertion: forall x, x=5 -> x + 0 = x := by
+    intros x E -- note that you have this bonus equality `E: x=5`
+    apply Nat.add_zero
+  apply an_assertion 5 (Eq.refl 5)
+
+/-!
+This behavior is useful if you want to *remember* a term as a variable for some later usage such as
+prove by cases. This could also be understood as a `enhanced` version of `revert`, because you are only
+allowed to `revert` an existing symbol, but `generalize` allows you to introduce new variables.
+-/
+theorem five_plus_zero'': 5 + 0 = 5 := by
+  -- The hypothesis of equality can be introduced explicitly as follows
+  generalize E: 5 = x
+  apply Nat.add_zero
 
 /-!
 ### Tactic `cases`
@@ -257,6 +309,62 @@ theorem and_true': forall b: Bool, Bool.and b true = b := by
   apply @Bool.rec
   case true => rfl
   case false => rfl
+
+/-!
+#### Disjunction and tactics
+Lean provides us the disjunction type `Or`. Unlike the `Sum` defined for arbitrary type, it is only
+defined for propositions.
+-/
+
+inductive MyOr (A B: Prop): Prop :=
+  | inl: A -> MyOr A B
+  | inr: B -> MyOr A B
+
+
+/-!
+In intuitionistic logic, to prove a disjunction, you have to prove either the left or the right, and
+to make use of it, you have to prove the result both under the left and under the right.
+
+```lean
+#check Or
+#check Or.inl
+-- or use this
+#check Or.intro_left
+#check Or.inr
+-- or use this
+#check Or.intro_right
+#check @Or.rec
+```
+-/
+#check Or
+#check Or.inl
+-- or use this
+#check Or.intro_left
+#check Or.inr
+-- or use this
+#check Or.intro_right
+#check @Or.rec
+
+theorem affirm_the_left: A -> A ∨ B := by
+  intros a
+  apply Or.inl
+  apply a
+
+theorem affirm_the_right: B -> A ∨ B := by
+  intros b
+  right -- a tactic to apply `Or.inr`
+  apply b
+
+
+
+/--
+Lean provides `or_comm`
+-/
+theorem disj_comm: A ∨ B -> B ∨ A := by
+  intros H
+  cases H
+  case inl a => right; apply a -- you can write multiple tactics within one line separated by `;`
+  case inr b => left; apply b
 
 /-!
 ### Structure for conjuctions and existential quantifiers.
@@ -308,6 +416,11 @@ You can omit the name of the constructor `mkPoint`. Then lean will use `Point.mk
 
 def point34 := Point.mkPoint 3 4
 #eval { point34 with x:=5 }
+
+/-!
+You can also use the syntactic sugar `⟨,⟩` for a structure
+-/
+def point34': Point Nat := ⟨3, 4⟩
 
 /-!
 The structure can also be dependent. For example a monoid is a dependent tuple with
@@ -376,6 +489,70 @@ end scratch
 #check Exists.choose_spec
 #check @Exists.rec
 
+/-!
+#### Tactics related to `And`
+I show you how to prove a conjunction and how to make use of a conjunction.
+-/
+
+theorem and_intro: A -> B -> A ∧ B := by
+  intros a b
+  apply And.intro a b
+
+theorem and_intro': A -> B -> A ∧ B := by
+  intros a b
+  -- or prove it separately
+  apply And.intro
+  -- for multi-targets, you can use the `bullets` for each case
+  . apply a
+  . apply b
+
+/--
+Lean provides `and_comm`
+-/
+theorem conj_comm: A ∧ B -> B ∧ A := by
+  intros H
+  cases H with -- destruct a conjunction
+  | intro a b =>
+    apply And.intro
+    -- you can also use cases
+    case left => apply b
+    case right => apply a
+
+
+/-!
+Previously, the `intros` tactics was used to introduce premises. Actually, it is the plural form
+of tactic `intro`. `intros` allows you to intros multiple premises, while `intro` allow you to
+introduce a conjuction by its components.
+-/
+theorem conj_comm3: A ∧ B ∧ C -> C ∧ B ∧ A := by
+  intro ⟨ a, b, c ⟩
+  apply And.intro
+  . apply c
+  . apply And.intro
+    . apply b
+    . apply a
+
+/-!
+#### Tactics related to `Exists`
+Still, how to conclude an existence and how to make use of such an existence.
+-/
+theorem four_is_double_2: exists (k: Nat), 4 = k + k := by
+  apply Exists.intro 2
+  rfl
+
+/-!
+you can finish the proof with a simple `exists`
+-/
+theorem four_is_double_2': exists (k: Nat), 4 = k + k := by
+  exists 2 -- lean will try to finish the proof after you choose one construction
+
+/-!
+To make use of it, still use cases to destruct.
+-/
+theorem use_exists: (exists n: Nat, n + 1 = n + 2) -> exists m, m = m + 1 := by
+  intros H
+  cases H with
+  | intro n Hn => exists n + 1
 
 /-!
 ### True and False and ex falso quodlibet
@@ -458,9 +635,10 @@ theorem discriminate_ex2: forall (m n: Nat), true = false -> m = n := by
 /-!
 ## Induction Principle for natural numbers.
 Finally, I can tell you how the induction principle gets its name. Let's think about the eliminator of
-natural numbers: `forall (P: N -> Type) -> P N.Z -> (forall n: N, P n -> P n.S) -> forall n: N, P n`.
+natural numbers:
+`forall (P: Nat -> Type) -> P Nat.zero -> (forall n: Nat, P n -> P n.succ) -> forall n: Nat, P n`.
 This induction principle says that to prove something about `N`, you have to first prove it for
-`Z` and forall `n` such `P n`, you can prove `P n.S`, which is exactly the usual `mathematical induction`.
+`Z` and forall `n` such `P n`, you can prove `P n.succ`, which is exactly the usual `mathematical induction`.
 The tactic `induction` is the application of this eliminator.
 
 You can check the builtin one.
@@ -469,4 +647,4 @@ You can check the builtin one.
 ```
 -/
 
-#check @N.rec
+#check @Nat.rec

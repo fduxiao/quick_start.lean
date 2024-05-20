@@ -12,42 +12,68 @@ def evenb (n: Nat): Bool := match n with
 #eval evenb 5
 #eval evenb 20
 
-theorem not_not_id: forall b: Bool, not (not b) = b := by
-  intros b
-  cases b
-  . rfl
-  . rfl
 
-theorem evenb_add_2: forall n, evenb (n + 2) = evenb n := by
+theorem evenb_S: forall n: Nat, evenb n.succ = not (evenb n) := by
   intros n
-  compute only [evenb]
-  apply not_not_id
-
+  compute [evenb]
+  rfl
 
 /-!
 ## Predicate with other propositions
 -/
 
 def double (n: Nat): Nat := 2 * n
-def evenE (n: Nat): Prop := exists k: Nat, n = double k
+def even_double (n: Nat): Prop := exists k: Nat, n = double k
 
-example: evenE 4 := by
+example: even_double 4 := by
   exists 2
 
 theorem double_evenb: forall n, evenb (double n) = true := by
   intros n
   induction n
   case zero => rfl
-  case succ n IHn =>
-    admit
+  case succ m IHm =>
+    simp [double]
+    simp [evenb]
+    apply IHm
 
-theorem double_conv: forall n, n = if evenb n then double k else (double k).succ := sorry
+theorem double_conv: forall n, exists k, n = if evenb n then double k else (double k).succ := by
+  intros n
+  induction n
+  case zero =>
+    simp [evenb]
+    exists 0 -- lean conclude the proof automatically
+  case succ m IHm =>
+    simp [evenb]
+    cases IHm with
+    | intro k Hk =>
+      -- now we have to prove by cases of `evenb m`
+      generalize E: evenb m = even_m
+      rw [E] at Hk
+      cases even_m with
+      | true =>
+        simp at *
+        exists k
+      | false =>
+        simp at *
+        exists (k + 1)
+        simp [double]
+        rw [Hk]
+        rfl
 
 /-!
 ## evenE is decidable
 -/
 
-theorem evenb_evenE: forall n: Nat, evenb n = true -> evenE n := sorry
+theorem even_double_evenb: forall n, even_double n -> evenb n = true := by
+  intros n H
+  unfold even_double at H
+  cases H with
+  | intro k Hk =>
+    rw [Hk]
+    apply double_evenb
+
+theorem evenb_even_double: forall n: Nat, evenb n = true -> even_double n := sorry
 
 
 /-!
@@ -72,7 +98,9 @@ theorem even_evenb: forall n, even n -> evenb n = true := by
   case even_z =>
     rfl
   case even_ss m e IHe =>
-    rw [evenb_add_2]
+    rw [evenb]
+    rw [evenb]
+    simp
     exact IHe
 
 
@@ -84,3 +112,7 @@ theorem evenb_even: forall n, evenb n = true -> even n := by
     apply even_z
   case succ m IHm =>
     admit
+
+/-!
+### Another example as exercise
+-/
