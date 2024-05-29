@@ -691,6 +691,7 @@ with some syntactic sugar for it.
 #check [] -- for nil
 #check (1 :: 2 :: []) -- for cons
 #check ([1, 2, 3]) -- or this notation
+#eval ([1, 2, 3] ++ [4, 5, 6]) -- concatenation
 #check ([.Friday, .Sunday] : List DaysOfWeek) -- or some other type
 ```
 -/
@@ -698,4 +699,5 @@ with some syntactic sugar for it.
 #check [] -- for nil
 #check (1 :: 2 :: []) -- for cons
 #check ([1, 2, 3]) -- or this notation
+#eval ([1, 2, 3] ++ [4, 5, 6]) -- concatenation
 #check ([.Friday, .Sunday] : List DaysOfWeek) -- or some other type

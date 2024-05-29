@@ -447,7 +447,7 @@ structure Monoid extends MonoidData where
 
 /-!
 Lean provides type `And` for conjuction and type `Exists` for existential quantifiers. `And` is defined
-as a structure but `Exists` is still defined as an inductive pair.
+as a structure but `Exists` is still defined as an inductive pair in lean.
 
 ```lean
 #check And
@@ -473,6 +473,11 @@ structure And (A B: Prop): Prop where
 
 inductive Exists (A: Type) (P: A -> Prop): Prop where
   | intro: (a: A) -> P a -> Exists A P
+
+structure MyDependentPair (A: Type) (P: A -> Type) where
+  intro ::
+  fst: A
+  snd: P a
 
 end scratch
 
@@ -553,6 +558,44 @@ theorem use_exists: (exists n: Nat, n + 1 = n + 2) -> exists m, m = m + 1 := by
   intros H
   cases H with
   | intro n Hn => exists n + 1
+
+/-!
+#### Subtype syntactic sugar for dependent pair
+We have to distinguish 3 things in lean, even though they have the same nature.
+
+1. The existential quantifier: `∃: (A: Type) -> (A -> Prop) -> Prop`
+2. The dependent pair: `Σ: (A: Type) -> (A -> Type) -> Type`
+3. The subtype: `Subtype: (A: Type) -> (A -> Prop) -> Type`
+
+```lean
+#check Exists
+#check Sigma
+#check Subtype
+```
+
+In lean, the last 2 are defined as structures.
+-/
+
+#check Exists
+#check Sigma
+#check Subtype
+
+/-!
+You can use the following syntax for subtyping
+
+```lean
+#check Subtype (α := Nat) (λ x => x = 2)
+#check {x: Nat // x = 2}
+```
+-/
+
+#check Subtype (α := Nat) (λ x => x = 2)
+#check {x: Nat // x = 2}
+
+def nat2 := {x: Nat // x = 2}
+def nat_two: nat2 := Subtype.mk 2 (Eq.refl 2)
+def nat_two': nat2 := ⟨2, by rfl⟩
+
 
 /-!
 ### True and False and ex falso quodlibet
